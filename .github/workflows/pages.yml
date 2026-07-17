@@ -1,0 +1,83 @@
+# Burrow default GitHub Pages workflow.
+# Auto-detects framework: if package.json with a build script exists,
+# runs `npm run build` and deploys the output dir (dist/build/out/_site/public).
+# Otherwise deploys repo root as-is (works for plain HTML/CSS/JS).
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Detect framework
+        id: detect
+        run: |
+          if [ -f package.json ] && grep -q '"build"' package.json; then
+            echo "framework=npm" >> $GITHUB_OUTPUT
+          else
+            echo "framework=static" >> $GITHUB_OUTPUT
+          fi
+      - name: Setup Node
+        if: steps.detect.outputs.framework == 'npm'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        if: steps.detect.outputs.framework == 'npm'
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+      - name: Build
+        if: steps.detect.outputs.framework == 'npm'
+        run: npm run build
+      - name: Resolve output directory
+        id: outdir
+        run: |
+          if [ "${{ steps.detect.outputs.framework }}" = "static" ]; then
+            echo "dir=." >> $GITHUB_OUTPUT
+          else
+            for d in dist build out _site public; do
+              if [ -d "$d" ]; then
+                echo "dir=$d" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            done
+            echo "No build output directory found. Tried: dist build out _site public" >&2
+            exit 1
+          fi
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ steps.outdir.outputs.dir }}
+
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
