@@ -1,0 +1,19 @@
+{
+  "name": "Auto Shop Tracker",
+  "short_name": "Shop Tracker",
+  "description": "Track shop vehicles, plates, VINs, notes, services, and payments.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
